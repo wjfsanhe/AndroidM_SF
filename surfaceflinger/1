@@ -1,0 +1,113 @@
+
+#include <utils/String16.h>
+#include <utils/String8.h>
+#include <binder/Parcel.h>
+#include "../sfLog.h"
+#include "IActivityManager.h"
+
+
+namespace android {
+
+enum {
+	PEEK_SERVICE_TRANSACTION = IBinder::FIRST_CALL_TRANSACTION+84
+};
+
+class BpActivityManager : public BpInterface<IActivityManager>
+{
+#define  TAG   "BpActivityManager"
+public:
+    BpActivityManager(const sp<IBinder>& impl)
+        : BpInterface<IActivityManager>(impl)
+    {
+    }
+/*public int bindService(IApplicationThread caller, IBinder token,
+            Intent service, String resolvedType, IServiceConnection connection,
+            int flags,  String callingPackage, int userId) throws RemoteException {
+        Parcel data = Parcel.obtain();
+        Parcel reply = Parcel.obtain();
+        data.writeInterfaceToken(IActivityManager.descriptor);
+        data.writeStrongBinder(caller != null ? caller.asBinder() : null);
+        data.writeStrongBinder(token);
+        service.writeToParcel(data, 0);
+        data.writeString(resolvedType);
+        data.writeStrongBinder(connection.asBinder());
+        data.writeInt(flags);
+        data.writeString(callingPackage);
+        data.writeInt(userId);
+        mRemote.transact(BIND_SERVICE_TRANSACTION, data, reply, 0);
+        reply.readException();
+        int res = reply.readInt();
+        data.recycle();
+        reply.recycle();
+        return res;
+    }*/
+	
+    	
+
+    /* copy form AndroidManagerNative.java
+    Parcel data = Parcel.obtain();
+    Parcel reply = Parcel.obtain();
+    data.writeInterfaceToken(IActivityManager.descriptor);
+    service.writeToParcel(data, 0); intent.
+    data.writeString(resolvedType);
+    data.writeString(callingPackage);
+    mRemote.transact(PEEK_SERVICE_TRANSACTION, data, reply, 0);
+    reply.readException();
+    IBinder binder = reply.readStrongBinder();*/
+
+    sp<IBinder>  peekService(String16& action, String16& resolvedType,
+				String16& callingPackage, String16& component){
+	    Parcel data, reply;
+	    //the key point is to construct Native Intent.
+	    data.writeInterfaceToken(String16("android.app.IActivityManager"));    
+	    /*start of intent */  
+	    data.writeString16(action,action.size()); /* action */  
+	    data.writeInt32(0); /* Uri - type no url */
+	    //data.writeString16(String16("baofeng_mojing"));  
+	    data.writeString16(NULL, 0); /* type */  
+	    data.writeInt32(0); /* flags */  
+	    data.writeString16(callingPackage,callingPackage.size()); /* package name */  
+	    data.writeString16(callingPackage,callingPackage.size()); /* package name */  
+	    data.writeString16(component, component.size()); /* ComponentName */  
+	    //data.writeString16(NULL, 0); /* ComponentName */  
+	    data.writeInt32(0); /* source bound - size */  
+	    data.writeInt32(0); /* Categories - size */  
+	    data.writeInt32(0); /* selector - size */  
+	    data.writeInt32(0); /* ClipData */  
+	    data.writeInt32(1000); /* UserHint */  
+	    data.writeInt32(0); /* bundle(extras) size */  
+	    /* end of intent */   
+	    data.writeString16(NULL, 0); /* resolvedType */  
+	    data.writeString16(callingPackage,callingPackage.size()); /* calling package */
+	    int err = remote()->transact(PEEK_SERVICE_TRANSACTION,data,&reply);  
+	    if (err != NO_ERROR) {
+		    SF_LOG(TAG, "peek service %s fail from package %s",String8(action).string(),
+				    String8(callingPackage).string()); 
+		    return NULL;	
+	    }
+	    int32_t expCode=reply.readExceptionCode() ;
+	    if ( expCode != 0) {
+		SF_LOG(TAG, "peek service fail exception code %d",expCode);	
+		return NULL;
+	    }
+	    sp<IBinder> binder = reply.readStrongBinder();
+	    if(binder == NULL){
+	    	SF_LOG(TAG, "peek service fail ,binder is null");
+		return NULL;
+	    }
+	    SF_LOG(TAG, "peek service %s success from package %s",String8(action).string(),
+			    String8(callingPackage).string()); 
+	    return binder ;
+    }
+
+
+    virtual bool isBinderAlive() {
+	    return remote()->isBinderAlive();
+    }
+};
+
+IMPLEMENT_META_INTERFACE(ActivityManager, "android.app.IActivityManager");
+
+// ----------------------------------------------------------------------------
+
+}; // namespace android
